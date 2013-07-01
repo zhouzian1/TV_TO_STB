@@ -8,47 +8,10 @@
 #include<unistd.h>
 #include<termios.h>
 #include<math.h>
+#include <android/log.h>
+#include"copy.h"
 
-
-#define BUF_OTHER_ITME_SIZE 12
-#define CODE_STATUS_BUF_SIZE 12
-#define CODE_VALUE_BUF_SIZE 13
-#define CODE_ENTRY_BUF_SIZE 100
-
-#define CODE_DATA_SIZE 1
-#define CODE_UPDATE_START_SIZE 4
-#define CODE_VERSION_SIZE 2
-#define NO_CONFIG_DATA_SIZE 2
-#define CONFIG_DATA_SIZE 6
-#define CODE_UPDATE_DATA_SIZE 80
-
-#define ACK_SIZE 13
-#define NACK_SIZE 13
-#define CONFIG_ACK_SZIE 18
-#define NO_CONFIG_ACK_SIZE 18
-
-#define BAUDRATE B38400
-#define DATA_HEAD 0xa5
-#define DATA_TAIL 0xb6
-#define CONFIG_CHECK 0x03
-
-#define SEND_VALUE_CMD 0x01
-#define UPDATE_VALUE_CMD 0x02
-#define CONFIG_CMD 0x03
-#define ACK_CMD 0xee
-
-#define ACK 0x01
-#define NACK 0xff
-#define MAX_LINE 1024
-
-#define STB_VERSION "version"
-static short frame_num = 1 ;
-int update_start = 0;
-int update_end = 0;
-
-char config_info[5] ={0} ;
-
-// frame_num = rand();
+char config_info[5]={0};
 
 char get_check_code(char *data, signed short length)
 {
@@ -83,27 +46,27 @@ void create_buf(char* buf, short frame_no, char order, short length, char* data_
 		buf+=sizeof(short);
 		memcpy(buf, &order, sizeof(char));
 		buf+=sizeof(char);
-		// printf("buf = %x %x %x %x %x %x \n",p[0],p[1],p[2],p[3],p[4],p[5]);
+
 		memcpy(buf, &length, sizeof(short));
 		buf+=sizeof(short);
-		// printf("buf = %x %x %x %x %x %x %x \n",p[0],p[1],p[2],p[3],p[4],p[5],p[6]);
+
 		memcpy(buf, data_buf, length);
 		buf+=length;
-		// printf("buf = %x %x %x %x %x %x %x %s\n",p[0],p[1],p[2],p[3],p[4],p[5],p[6],buf);
 		
+
 		check_code = get_check_code(check_buf+3, 2+1+2+length);
 		memcpy(buf,&check_code, sizeof(char));
 		buf+=sizeof(char);
-		printf("check_code  = %x \n",check_code);
+		LOGD("check_code  = %x \n",check_code);
 		
 		for(i=0; i<3; i++){
-			//buf = code_value_buf ;
+
 			memcpy(buf, &tail, sizeof(char));
 			buf+=sizeof(char);
-			// printf("buf = %x %x %x %x %x %x %x  %x %x %x %x\n",p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[14],p[15],p[1]);
+
 		}
-		// printf("buf = %s \n",buf);
-		//printf("buf is %s",buf);
+		// LOGD("buf = %s \n",buf);
+		//LOGD("buf is %s",buf);
 		//return p ;
 
 }
@@ -121,12 +84,12 @@ int analyze_buf(char* buf, short length)
 	
 	// buf = tmp;
 	
-	printf("analyze buf = %p  ltheng= %d\n",buf,length);
+	LOGD("analyze buf = %p  ltheng= %d\n",buf,length);
 	for(i=0;i<length;i++)
 		{
-			printf("%x \t",buf[i]);
+			LOGD("%x \t",buf[i]);
 		}
-	printf("\n");
+	LOGD("\n");
 	tmp_buf = buf ;
 	
 	check_code = get_check_code(buf+3, length-7);
@@ -134,50 +97,50 @@ int analyze_buf(char* buf, short length)
 			memcpy(head,tmp_buf, 3*sizeof(char));
 			tmp_buf+=3*sizeof(char);
 			for(i=0; i<3; i++){
-				printf("head[%d] = %x \n",i,*(head+i));
+				LOGD("head[%d] = %x \n",i,*(head+i));
 			}
 		memcpy(&frame_no, tmp_buf, sizeof(short));
 		tmp_buf+=sizeof(short);
 		// frame_no = ((short)frame[1]<<8)+(short)frame[0] ;
-		printf("frame_no = %x \n",frame_no);
+		LOGD("frame_no = %x \n",frame_no);
 		
 		memcpy(&order, tmp_buf, sizeof(char));
 		tmp_buf+=sizeof(char);
-		printf("order = %x \n",order);
+		LOGD("order = %x \n",order);
 		
 		memcpy(&len, tmp_buf, sizeof(short));
 		tmp_buf+=sizeof(short);
-		printf("len = %x \n",len);
+		LOGD("len = %x \n",len);
 		
 		data_buf=(char*)malloc(len*sizeof(char));
 		if(data_buf==NULL){
-			printf("malloc failed \n");
+			LOGD("malloc failed \n");
 			return -1;
 		}
 		memcpy(data_buf, tmp_buf, len);
-		printf("data buf  = %x \n",*data_buf);
+		LOGD("data buf  = %x \n",*data_buf);
 		tmp_buf+=len;
 		
 		memcpy(&check,tmp_buf, sizeof(char));
-		printf("check  = %x \n",check);
+		LOGD("check  = %x \n",check);
 		tmp_buf+=sizeof(char);
 		
 		// for(i=0; i<3; i++){
 			memcpy(tail, tmp_buf, 3*sizeof(char));
 			tmp_buf+=3*sizeof(char);
 		for(i=0; i<3; i++){	
-			printf("tail[%d] = %x \n",i,*(tail+i));
+			LOGD("tail[%d] = %x \n",i,*(tail+i));
 		}
 		
 		
 		if(frame_no!=frame_num){
-			printf("frame_no error \n");
+			LOGD("frame_no error \n");
 			free(data_buf);
 			return -1;
 		}
 		for(i=0; i<3; i++){
 			if(head[i]!=DATA_HEAD){
-				printf("head error \n");
+				LOGD("head error \n");
 				free(data_buf);
 				return -1;
 			}
@@ -185,7 +148,7 @@ int analyze_buf(char* buf, short length)
 		
 		for(i=0; i<3; i++){
 			if(tail[i]!=DATA_TAIL){
-				printf("tail error \n");
+				LOGD("tail error \n");
 				free(data_buf);
 				return -1;
 			}
@@ -193,63 +156,63 @@ int analyze_buf(char* buf, short length)
 		
 		
 		if(order!=ACK_CMD){
-			printf("code order error \n");
+			LOGD("code order error \n");
 			free(data_buf);
 			return -1;
 		
 		}
 		
 		if(check_code!=check){
-			printf("check error \n");
+			LOGD("check error \n");
 			free(data_buf);
 			return -1;
 		}
 		
 		if(!(len==CODE_DATA_SIZE || len==CONFIG_DATA_SIZE)){
 		
-			printf("code data len error \n");
+			LOGD("code data len error \n");
 			free(data_buf);
 			return -1 ;
-			// printf("len ture\n");
+			// LOGD("len ture\n");
 		}
 		
 		if(len==CODE_DATA_SIZE){
-			printf("code data size = 1 \n");
+			LOGD("code data size = 1 \n");
 			if(*data_buf==ACK){
-				printf("rece ACK \n");
+				LOGD("rece ACK \n");
 				frame_num++;
-				printf("frame_num = %x \n",frame_num);
+				LOGD("frame_num = %x \n",frame_num);
 				free(data_buf);
 				return 1;
 			}else if(*data_buf==NACK){
-				printf("rece NACK \n");
+				LOGD("rece NACK \n");
 				free(data_buf);
 				return -1;
 			}else{
-				printf("rece other NACK \n");	
+				LOGD("rece other NACK \n");
 				free(data_buf);
 				return -1;
 			}
 		}else if(len==CONFIG_DATA_SIZE){
-				printf("code data size = 6 \n");
+				LOGD("code data size = 6 \n");
 				if(*data_buf==CONFIG_CHECK){
-					printf("config check = 3 \n");
+					LOGD("config check = 3 \n");
 					// data_buf+=1;
 					for(i=0; i<CONFIG_DATA_SIZE-1; i++){
 						config_info[i]=data_buf[i+1];
-						printf("config info[%d]=%x \n",i,config_info[i]);
+						LOGD("config info[%d]=%x \n",i,config_info[i]);
 					}
 					// config_info=data_buf;
-					// printf("config info[%d]=%x",i,config_info[i]);
+					// LOGD("config info[%d]=%x",i,config_info[i]);
 					frame_num++;
-					printf("frame_num = %x \n",frame_num);
+					LOGD("frame_num = %x \n",frame_num);
 					free(data_buf);
 					return 2;
 				}else{
-					printf("config check !!= 3\n");
+					LOGD("config check !!= 3\n");
 					frame_num++;
-					printf("frame_num = %x",frame_num);
-					printf("rece no config \n");
+					LOGD("frame_num = %x",frame_num);
+					LOGD("rece no config \n");
 					free(data_buf);
 					return 0;
 				}
@@ -264,43 +227,42 @@ int analyze_buf(char* buf, short length)
 
 char* joint_buf(short frame_no, char order, short length, char* data_buf ,int buf_len)
 {
-	char code_value_buf[CODE_VALUE_BUF_SIZE], code_entry_buf[CODE_ENTRY_BUF_SIZE], *buf;
-	char *p;
+	char *buf,*ptr;
 	int i ;
 	 
 	switch(order){
 	
 	case 0x01 :{
-		p = malloc( buf_len*sizeof(char));
-		buf = p;
+		ptr = malloc( buf_len*sizeof(char));
+		buf = ptr;
 		memset(buf, 0, buf_len);
-		printf("buf = %s \n",buf);
+		LOGD("buf = %s \n",buf);
 		create_buf(buf, frame_no, order, length, data_buf);
-		return p;
+		return ptr;
 		
 		
 	} break ;
 	
 	case 0x02 : {
-		p = malloc( buf_len*sizeof(char));
-		buf = p;
+		ptr = malloc( buf_len*sizeof(char));
+		buf = ptr;
 		memset(buf, 0, buf_len);
-		printf("buf = %s \n",buf);
+		LOGD("buf = %s \n",buf);
 		
 		create_buf(buf, frame_no, order, length, data_buf);
-		return p;
+		return ptr;
 		
 		
 	} break ;
 	
 	 case 0x03 : {
-		p = malloc( buf_len*sizeof(char));
-		buf = p;
+		ptr = malloc( buf_len*sizeof(char));
+		buf = ptr;
 		memset(buf, 0, buf_len);
-		printf("buf = %s \n",buf);
+		LOGD("buf = %s \n",buf);
 		create_buf(buf, frame_no, order, length, data_buf);
 		
-		return p;
+		return ptr;
 		
 	 
 	 }break;
@@ -330,22 +292,17 @@ int serial_send_data(char* buf, int length)
 		perror("open /dev/ttyACM0");
 	}
 	
-	printf("serial_send_data\n");
-	for(i=0;i<length;i++)
-		{
-			printf("%x \t",buf[i]);
-		}
-	printf("\n");
-	// char buf[]={"SSello, serial port send test\n"};
-	//char buf[]={0xA5,0xA5,0xA5,0x00,0x00,0x01,0x00,0x05,0x01,0x02,0x03,0x04,0x05,0x13,0xB6,0xB6,0xB6};
+	LOGD("serial_send_data\n");
+	// for(i=0;i<length;i++)
+		// {
+			// LOGD("%x \t",buf[i]);
+		// }
+	// LOGD("\n");
 	struct termios option;
-	//int length = sizeof(buf);
-	printf("ready for sending data.....\n");
-	printf("buf length = %d \n",length);
+	LOGD("ready for sending data.....\n");
+	LOGD("buf length = %d \n",length);
 	
 	tcgetattr(fd,&option);
-	// option.c_cflag &= ~PARENB;
-	// option.c_cflag &= ~CRTSCTS;
 	cfmakeraw(&option);
 	
 	cfsetispeed(&option,B38400);
@@ -359,7 +316,7 @@ int serial_send_data(char* buf, int length)
 		close(fd);
 		return -1;
 	}
-	printf("success ret = %d \n", ret);
+	LOGD("success ret = %d \n", ret);
 	close(fd);	
 	return 0;
 }
@@ -381,12 +338,13 @@ char* serial_rece_data(int len)
 	
 	fd = open("/dev/ttyACM0",O_RDWR|O_NOCTTY|O_NONBLOCK);
 	if(fd<0){
-			printf("can't open /dev/ttyACM0 \n");
+			LOGD("can't open /dev/ttyACM0 \n");
 			return NULL;
 	}
 	
-	FD_ZERO ( &descriptors );
-	FD_SET ( fd, &descriptors );
+	FD_ZERO( &descriptors);
+
+	FD_SET( fd, &descriptors );
 	
 	rbuf=(char*)malloc(len*sizeof(char)+1);
 	memset(rbuf,0,len*sizeof(char)+1);
@@ -398,41 +356,41 @@ char* serial_rece_data(int len)
 
 	tcsetattr(fd,TCSANOW,&option);
 	// rbuf=hd;
-	printf("ready for receiving data...\n");
+	LOGD("ready for receiving data...\n");
 	// retv=read(fd,rbuf,len); 
 	retv=select( fd + 1, &descriptors, NULL, NULL, &time_to_wait);
 	
 	if ( retv < 0 ) {
 		/* Error */
-		printf("select error \n");
+		LOGD("select error \n");
 		return NULL;
 	}
 
 	else if ( ! retv ) {
 		/* Timeout */
-		printf("Time Out \n");
+		LOGD("Time Out \n");
 		return NULL;
 	}
 
 	else if ( FD_ISSET ( fd, &descriptors ) ) {
 		/* Process the inotify events */
-			printf("****************have read data************************\n");
+			LOGD("****************have read data************************\n");
 		
 			retv=read(fd,rbuf,len);
 			if(retv<0){
-				printf("read error \n");
+				LOGD("read error \n");
 				close(fd);
 				return NULL;
 			}
 		
 		}
-		printf("The data received is:\n"); 
-	// printf("%x \n",rbuf);
+		LOGD("The data received is:\n");
+	// LOGD("%x \n",rbuf);
 		for(i=0;i<len;i++)
 			{
-				printf("%x \t",rbuf[i]);
+				LOGD("%x \t",rbuf[i]);
 			}
-		printf("\n");
+		LOGD("\n");
 		close(fd);
 		return rbuf;
 
@@ -443,47 +401,35 @@ char* serial_rece_data(int len)
 
 int send_code(char *data, char order, short data_size, int buf_size)
 {
-	printf("send func \n");
+	LOGD("send func \n");
 	int i;
 	char* buf, *rece_buf;
 	char value;
 	// value=code;
-	printf("data_size =%x  buf_size= %x ",data_size, buf_size);
+	LOGD("data_size =%x  buf_size= %x ",data_size, buf_size);
 	buf = joint_buf(frame_num, order, data_size, data, buf_size);
-	for(i=0;i<buf_size;i++)
-		{
-			printf("%x \t",*(buf+i));
-		}
-	printf("\n");
+	// for(i=0;i<buf_size;i++)
+		// {
+			// LOGD("%x \t",*(buf+i));
+		// }
+	// LOGD("\n");
 	while(1){
 		int ret = serial_send_data(buf, buf_size);
 		if(ret<0){
-				printf("send error \n");
+				LOGD("send error \n");
 				return -1;
 			}
 		usleep(500);
 	
 		rece_buf=serial_rece_data(ACK_SIZE);
 		if(rece_buf==NULL){
-			printf("select read \n");
+			LOGD("select read \n");
 			continue ;
 		}
-		// if(rece_buf==NULL){
-			// printf("wait 500ms \n");
-		
-			// usleep(1000);
-			// rece_buf=serial_rece_data(ACK_SIZE);
-		
-			// if(rece_buf==NULL){
-				// printf("rece error \n");
-				// continue ;
-				// }
-				
-		// }
-		printf("zzzzz rece buf = %p \n",rece_buf);
+		LOGD("zzzzz rece buf = %p \n",rece_buf);
 		ret = analyze_buf(rece_buf, ACK_SIZE);
 		if(ret==-1){
-			printf("zz rece NACK \n");
+			LOGD("zz rece NACK \n");
 			// return -1;
 			continue ;
 		}else if(ret == 1){
@@ -503,27 +449,26 @@ int send_code(char *data, char order, short data_size, int buf_size)
 char* convert_string(char *buf,int* len)
  {
 	int code = 0;
-	// char str[] = "now # is the time for all # good men to come to the # aid of their country";
 	int i=0;
 	char delims[] = "#";
 	char *split_buf[3] ;
 	char *result = NULL;
 	result = strtok( buf, delims );
 	while( result != NULL ) {
-       printf( "result is \"%s\"\n", result );
+       // LOGD( "result is \"%s\"\n", result );
 	   split_buf[i++]=result;
 	   
 	   code=atoi(result);
-	   printf( "code is %d \n",code);
+	   // LOGD( "code is %d \n",code);
        result = strtok( NULL, delims );
    } 
    
    for(i=0;i<3;i++){
-		printf( "split_buf [%d] %s\n", i, split_buf[i]);
+		LOGD( "split_buf [%d] %s\n", i, split_buf[i]);
    }
    
    result = strcat(split_buf[1],split_buf[2]);
-   printf( "join  result = %s\n", result);
+   LOGD( "join  result = %s\n", result);
    
    *len = strlen(result);
    
@@ -532,7 +477,8 @@ char* convert_string(char *buf,int* len)
 
 
 
-int update_code_table(char* path){
+int update_code_table(char* path)
+{
 
 	char config_buf[MAX_LINE]; /* 缓冲区 */
 	char *data_buf;
@@ -541,9 +487,9 @@ int update_code_table(char* path){
 	FILE *fp;
 	int len, length, ret;
 
-	ret = send_code( start_buf ,UPDATE_VALUE_CMD, sizeof(start_buf), BUF_OTHER_ITME_SIZE+sizeof(start_buf));
+	ret = send_code( start_buf ,UPDATE_VALUE_CMD, sizeof(start_buf), BUF_OTHER_ITMES_SIZE+sizeof(start_buf));
 	if(ret<0){
-		printf("send code err \n");
+		LOGD("send code err \n");
 	}
 	
 	usleep(500);
@@ -558,29 +504,29 @@ int update_code_table(char* path){
 	config_buf[len - 1] = '\0'; /* 去掉换行符，这样其他的字符串函数就可以处理了 */
 
 	data_buf = convert_string(config_buf, &length);
-	printf( "data buf result = %s\n", data_buf);
+	LOGD( "data buf result = %s\n", data_buf);
 	
 	if(strstr(data_buf, STB_VERSION)!=NULL){
-		printf("stb version info \n");
-		ret = send_code( data_buf ,UPDATE_VALUE_CMD, length, BUF_OTHER_ITME_SIZE+length); //buf size 14
+		LOGD("stb version info \n");
+		ret = send_code( data_buf ,UPDATE_VALUE_CMD, length, BUF_OTHER_ITMES_SIZE+length); //buf size 14
 		if(ret<0){
-			printf("send code err \n");
+			LOGD("send code err \n");
 		}
 	}else{
-		printf("stb data info \n");
-		ret = send_code( data_buf ,UPDATE_VALUE_CMD, length, BUF_OTHER_ITME_SIZE+length);
+		LOGD("stb data info \n");
+		ret = send_code( data_buf ,UPDATE_VALUE_CMD, length, BUF_OTHER_ITMES_SIZE+length);
 		if(ret<0){
-			printf("send code err \n");
+			LOGD("send code err \n");
 		}
 	
 	}
 
-	printf("%s %d\n", config_buf, len - 1); /* 使用printf函数输出 */
+	LOGD("%s %d\n", config_buf, len - 1); /* 使用LOGD函数输出 */
 	}
 
-	ret = send_code( end_buf ,UPDATE_VALUE_CMD, sizeof(end_buf), BUF_OTHER_ITME_SIZE+sizeof(end_buf));
+	ret = send_code( end_buf ,UPDATE_VALUE_CMD, sizeof(end_buf), BUF_OTHER_ITMES_SIZE+sizeof(end_buf));
 	if(ret<0){
-		printf("send code err \n");
+		LOGD("send code err \n");
 		return -1;
 	}
 	return 1;
@@ -589,10 +535,10 @@ int update_code_table(char* path){
 
 int send_code_value(char code)
 {
-	printf("sen code value \n");
-	int ret = send_code(&code, SEND_VALUE_CMD, sizeof(char), BUF_OTHER_ITME_SIZE+sizeof(char));
+	LOGD("sen code value \n");
+	int ret = send_code(&code, SEND_VALUE_CMD, sizeof(char), BUF_OTHER_ITMES_SIZE+sizeof(char));
 	if(ret<0){
-		printf("send code err \n");
+		LOGD("send code err \n");
 		return -1;
 	}
 	
@@ -606,37 +552,37 @@ int send_config_info()
 	char order = CONFIG_CMD;
 	char data = CONFIG_CHECK;
 	short data_size = CODE_DATA_SIZE;
-	int buf_size = BUF_OTHER_ITME_SIZE+data_size;
+	int buf_size = BUF_OTHER_ITMES_SIZE+data_size;
 	int i;
-	printf("send config info\n");
-	printf("data_size =%x  buf_size= %x ",data_size, buf_size);
+	LOGD("send config info\n");
+	LOGD("data_size =%x  buf_size= %x ",data_size, buf_size);
 	buf = joint_buf(frame_num, order, data_size, &data, buf_size);
 	for(i=0;i<buf_size;i++)
 		{
-			printf("%x \t",*(buf+i));
+			LOGD("%x \t",*(buf+i));
 		}
-	printf("\n");
+	LOGD("\n");
 	while(1){
 		int ret = serial_send_data(buf, buf_size);
 		if(ret<0){
-				printf("send error \n");
+				LOGD("send error \n");
 				return -1;
 			}
 		usleep(500);
 	
 		rece_buf=serial_rece_data(CONFIG_ACK_SZIE);
 		if(rece_buf==NULL){
-			printf("select read \n");
+			LOGD("select read \n");
 			continue ;
 		}
 		
-		printf("zzzzz rece buf = %p \n",rece_buf);
+		LOGD("zzzzz rece buf = %p \n",rece_buf);
 		ret = analyze_buf(rece_buf, CONFIG_ACK_SZIE);
 		if(ret==0){
-			printf("no config info \n");
+			LOGD("no config info \n");
 			return 0;
 		}else if(ret==2){
-			printf("config info \n");
+			LOGD("config info \n");
 			return 1;
 			
 		}else if(ret==-1){
@@ -645,40 +591,40 @@ int send_config_info()
 		}
 		
 
-		
-	}
+	      }
+	return -1;
 }
 
 
 
 void main()
 {
-	printf("aaaa\n");
+	LOGD("aaaa\n");
 	int ret ;
 	// char code=0x88;
 	// ret = send_code_value(code);
 	
 	// if(ret==1){
-		// printf("send code success \n");
+		// LOGD("send code success \n");
 	// }
 	
 	ret = update_code_table("/data/test.txt");
 	if(ret==1){
-		printf("send code success \n");
+		LOGD("send code success \n");
 	}
 	
 	// ret = send_config_info();
 	// if(ret==1){
-		// printf("rece config success \n");
+		// LOGD("rece config success \n");
 	// }
 	// char* test_buf="aaaaaa";
 	// char* buf;
 	// char* buffer;
 	// char a = 0xb3;
 	// buf = malloc(3*sizeof(char));
-	// printf("buf = %x %x %x\n",buf[0],buf[1],buf[2]);
+	// LOGD("buf = %x %x %x\n",buf[0],buf[1],buf[2]);
 	// memset(buf, 0, 3*sizeof(char));
-	// printf("buf = %x %x %x \n",buf[0],buf[1],buf[2]);
+	// LOGD("buf = %x %x %x \n",buf[0],buf[1],buf[2]);
 	// memcpy(buf,&a,sizeof(char));
 	// memcpy(buf+1,&a,sizeof(char));
 	// memcpy(buf+2,&a,sizeof(char));
@@ -688,5 +634,5 @@ void main()
 	// analyze_buf(buf,6);
 	// memcpy(buffer, buf+8, 6);
 	
-	// printf("zzz== %s \n",buffer);
+	// LOGD("zzz== %s \n",buffer);
 }

@@ -4,21 +4,22 @@
 #include <android/log.h>
 #include <jni.h>
 #include <string.h>
-#include<cutils/log.h>
+//#include<cutils/log.h>
 #include<sys/stat.h>
 #include<fcntl.h>
 #include<errno.h>
-#include<input.h>
+#include<linux/input.h>
 #include<malloc.h>
 #include<sys/types.h>
 #include<unistd.h>
 #include<termios.h>
 #include<math.h>
-#include"list.h"
 #include <asm/types.h>
-//∏√Õ∑Œƒº˛–Ë“™∑≈‘⁄netlink.h«∞√Ê∑¿÷π±‡“Î≥ˆœ÷__kernel_sa_familyŒ¥∂®“Â
 #include <sys/socket.h>  
 #include <linux/netlink.h>
+
+#include"list.h"
+#include"copy.h"
 
 
 #define MAX_LINE 1024
@@ -36,9 +37,7 @@
  
 
 
-// #define LOGI(...)	__android_log_print(ANDROID_LOG_INFO, __FUNCTION__, __VA_ARGS__)
-// #define LOGD(...)	__android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, __VA_ARGS__)
-// #define LOGE(...)	__android_log_print(ANDROID_LOG_ERROR, __FUNCTION__, __VA_ARGS__)
+
 static int Opendev=1;
 static JavaVM* sVm;
 static int fd_key = -1;
@@ -51,9 +50,8 @@ void open_device_keycode();
 int get_device_keycode();
 int init_code_table(char* path);
 int match_stb_value(int code);
-int serial_send_data(char* buf, int len);
-int serial_rece_data(int len);
-
+//int serial_send_data(char* buf, int len);
+//int serial_rece_data(int len);
 
 
 
@@ -65,7 +63,7 @@ void jni_test()
 }
 
 
-//¥Úø™…Ë±∏
+//open IR device
 void open_device_keycode()
 {
 	printf("open\n");
@@ -80,7 +78,7 @@ void open_device_keycode()
 
 
 
-//ªÒ»°¬Î÷µ
+//get key_code value form IR device
 int get_device_keycode()
 {
 		int retv;
@@ -120,42 +118,40 @@ int get_device_keycode()
 			
 			
 			
-			struct pollfd fds[1] ;
-	
-				fds[0].fd = fd_key ;
-				fds[0].events = POLLIN ;
-				
-				return_value = poll(fds, 1, -1);
-				if(return_value == -1){
-					LOGE("poll err");
-					return -1 ;
-				}
-				else if(!return_value){
-					LOGE ("seconds elapsed.");
-					return -1 ;
-				}
-				else if(fds[0].revents & POLLIN){
-					LOGD("****************have read code************************\n");
-				
-					int count = read(fd_key, &event, sizeof(struct input_event));
-					if(EV_KEY == event.type && 1 == event.value){
-					//printf("zzztime : %ld, %d \t", ev_temp.time.tv_sec, ev_temp.time.tv_usec);
-					LOGD("zzgetcode code: %d, value: %d \n",event.code,event.value);
-					//__android_log_print(ANDROID_LOG_INFO, "Codemapping", "getcode code: %d, value: %d",event.code,event.value);
-					close(fd_key);
-					return event.code;
-				}			
-			
-			}
-				
-			
-		
+//			struct pollfd fds[1] ;
+//
+//				fds[0].fd = fd_key ;
+//				fds[0].events = POLLIN ;
+//
+//				return_value = poll(fds, 1, -1);
+//				if(return_value == -1){
+//					LOGE("poll err");
+//					return -1 ;
+//				}
+//				else if(!return_value){
+//					LOGE ("seconds elapsed.");
+//					return -1 ;
+//				}
+//				else if(fds[0].revents & POLLIN){
+
+
+			LOGD("****************have read code************************\n");
+
+			int count = read(fd_key, &event, sizeof(struct input_event));
+			if(EV_KEY == event.type && 1 == event.value){
+			//printf("zzztime : %ld, %d \t", ev_temp.time.tv_sec, ev_temp.time.tv_usec);
+			LOGD("zzgetcode code: %d, value: %d \n",event.code,event.value);
+			//__android_log_print(ANDROID_LOG_INFO, "Codemapping", "getcode code: %d, value: %d",event.code,event.value);
+			close(fd_key);
+			return event.code;
+		}
+
 		close(fd_key);	
 		return -1;
 }
 
 
-//init code TV and STB table
+//initialise TV convert to  STB table
 int init_code_table(char* path)
 {
 	LOGI("init_code_table");
@@ -168,21 +164,21 @@ int init_code_table(char* path)
 	char delims[] = "#";
     char *result = NULL;
 	
-	char buf[MAX_LINE]; /* ª∫≥Â«¯ */
+	char buf[MAX_LINE]; /* ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ */
 	FILE *fp;
 	int len;
 	
 	LOGI("config file path %s",path);
-	if((fp = fopen(path, "r")) == NULL){ /* ¥Úø™Œƒº˛ */
+	if((fp = fopen(path, "r")) == NULL){ /* ÔøΩÔøΩÔøΩƒºÔøΩ */
 		LOGE("fail to load config file");
 		return -1;
 	}
 
 
-	while(fgets(buf, MAX_LINE, fp) != NULL){ /* √ø¥Œ∂¡»Î“ª–– */
+	while(fgets(buf, MAX_LINE, fp) != NULL){ /* √øÔøΩŒ∂ÔøΩÔøΩÔøΩ“ªÔøΩÔøΩ */
 		len = strlen(buf);
-		/*  ‰≥ˆÀ˘∂¡µΩµƒ◊÷∑˚ª≠¥Æ£¨≤¢Ω´◊÷∑˚∏ˆ ˝ ‰≥ˆ */
-		buf[len - 1] = '\0'; /* »•µÙªª––∑˚£¨’‚—˘∆‰À˚µƒ◊÷∑˚¥Æ∫Ø ˝æÕø…“‘¥¶¿Ì¡À */
+		/* ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷∑ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷∑ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ */
+		buf[len - 1] = '\0'; /* »•ÔøΩÔøΩÔøΩÔøΩÔøΩ–∑ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷∑ÔøΩÔøΩÔøΩÕøÔøΩÔøΩ‘¥ÔøΩÔøΩÔøΩÔøΩÔøΩ */
 		
 		tmp = (struct code_data_node*)malloc(sizeof(struct code_data_node));
 		memset(tmp,0,sizeof(struct code_data_node));
@@ -203,18 +199,18 @@ int init_code_table(char* path)
 
 		LOGI("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);
 		LOGI("\n");
-		list_add(&(tmp->list), &(code_list.list));//Õ∑≤Â∑®≤Â»ÎΩ⁄µ„
-		//printf("%s %d\n", buf, len - 1); /*  π”√printf∫Ø ˝ ‰≥ˆ */
+		list_add(&(tmp->list), &(code_list.list));//Õ∑ÔøΩÂ∑®ÔøΩÔøΩÔøΩÔøΩ⁄µÔøΩ
+		//printf("%s %d\n", buf, len - 1); /*  πÔøΩÔøΩprintfÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ */
 	}
 	
 	
 	LOGI("list for each.........\n");
-	list_for_each(pos, &(code_list.list)) //±È¿˙Ω⁄µ„
+	list_for_each(pos, &(code_list.list)) //ÔøΩÔøΩÔøΩÔøΩ⁄µÔøΩ
 	{
 
-		tmp=list_entry(pos, struct code_data_node, list);//»°≥ˆµ±«∞listΩ⁄µ„µƒ÷∏œÚcode_data_nodeµƒµÿ÷∑
+		tmp=list_entry(pos, struct code_data_node, list);//»°ÔøΩÔøΩÔøΩÔøΩ«∞listÔøΩ⁄µÔøΩÔøΩ÷∏ÔøΩÔøΩcode_data_nodeÔøΩƒµÔøΩ÷∑
 
-		LOGI("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);//¥Ú”°∏√kool_listµƒΩ·ππÃÂ≥…‘±±‰¡ø
+		LOGI("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);//ÔøΩÔøΩ”°ÔøΩÔøΩkool_listÔøΩƒΩ·ππÔøΩÔøΩÔøΩ‘±ÔøΩÔøΩÔøΩÔøΩ
 
 	}
 
@@ -222,18 +218,18 @@ int init_code_table(char* path)
 	return 1;
 }
 
-//match stb value
+//match STB value
 int match_stb_value(int code)
 {
 	struct code_data_node *tmp ;
 	struct list_head *pos;
-	list_for_each(pos, &(code_list.list)) //±È¿˙Ω⁄µ„
+	list_for_each(pos, &(code_list.list)) //ÔøΩÔøΩÔøΩÔøΩ⁄µÔøΩ
 		{
 
-			tmp=list_entry(pos, struct code_data_node, list);//»°≥ˆµ±«∞listΩ⁄µ„µƒ÷∏œÚcode_data_nodeµƒµÿ÷∑
+			tmp=list_entry(pos, struct code_data_node, list);//»°ÔøΩÔøΩÔøΩÔøΩ«∞listÔøΩ⁄µÔøΩÔøΩ÷∏ÔøΩÔøΩcode_data_nodeÔøΩƒµÔøΩ÷∑
 
 			if(code==tmp->tv_code_value){
-				LOGD("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);//¥Ú”°∏√kool_listµƒΩ·ππÃÂ≥…‘±±‰¡ø
+				LOGD("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);//ÔøΩÔøΩ”°ÔøΩÔøΩkool_listÔøΩƒΩ·ππÔøΩÔøΩÔøΩ‘±ÔøΩÔøΩÔøΩÔøΩ
 				return tmp->stb_code_value ; 
 			}
 		}
@@ -241,126 +237,80 @@ int match_stb_value(int code)
 }
 
 //serial send data
-int serial_send_data(char* buf, int len)
-{
-	int ret , fd;
-	fd =open("/dev/ttyACM0",O_RDWR|O_NOCTTY);
-	if(fd<0){
-		LOGE("open /dev/ttyACM0");
-		return -1;
-	}
-	
-	//char buf[]={"SSello, serial port send test\n"};
-	struct termios option;
-	// int length = sizeof(buf);
-	int length = len ;
-	LOGD("ready for sending data.....length=%d",length);
-	
-	tcgetattr(fd,&option);
-	cfmakeraw(&option);
-	
-	cfsetispeed(&option,BAUDRATE);
-	cfsetospeed(&option,BAUDRATE);
-	
-	tcsetattr(fd,TCSANOW,&option);
-	
-	ret=write(fd,buf,length);
-	if(ret<0){
-		LOGE("write....");
-		close(fd);
-		return -1;
-	}
-	close(fd);
-	return len;
-	
-}
+//int serial_send_data(char* buf, int len)
+//{
+//	int ret , fd;
+//	fd =open("/dev/ttyACM0",O_RDWR|O_NOCTTY);
+//	if(fd<0){
+//		LOGE("open /dev/ttyACM0");
+//		return -1;
+//	}
+//
+//	//char buf[]={"SSello, serial port send test\n"};
+//	struct termios option;
+//	// int length = sizeof(buf);
+//	int length = len ;
+//	LOGD("ready for sending data.....length=%d",length);
+//
+//	tcgetattr(fd,&option);
+//	cfmakeraw(&option);
+//
+//	cfsetispeed(&option,BAUDRATE);
+//	cfsetospeed(&option,BAUDRATE);
+//
+//	tcsetattr(fd,TCSANOW,&option);
+//
+//	ret=write(fd,buf,length);
+//	if(ret<0){
+//		LOGE("write....");
+//		close(fd);
+//		return -1;
+//	}
+//	close(fd);
+//	return len;
+//
+//}
 
-
+//
 //serial receive data
-int serial_rece_data(int len)
-{
-	int fd, retv;
-	char  hd[MAX_BUF_SIZE],*rbuf; 
-	struct termios option;
-	
-	fd = open("/dev/ttyACM0",O_RDWR|O_NOCTTY);
-	if(fd<0){
-			LOGE("can't open /dev/ttyACM0");
-			return -1;
-	}
-
-	tcgetattr(fd,&option);
-	cfmakeraw(&option);
-
-	cfsetispeed(&option,BAUDRATE); /*38400bps*/
-	cfsetospeed(&option,BAUDRATE);
-
-	tcsetattr(fd,TCSANOW,&option);
-	rbuf=hd;
-	LOGD("ready for receiving data...\n");
-	retv=read(fd,rbuf,len); 
-	if(retv==-1){
-		LOGE("read error");
-		return -1;
-	}
-	LOGD("The data received is:\n"); 
-	LOGD("%s",rbuf);
-	
-	close(fd);
-	return 1;
-	
-}
-
-
+//int serial_rece_data(int len)
+//{
+//	int fd, retv;
+//	char  hd[MAX_BUF_SIZE],*rbuf;
+//	struct termios option;
+//
+//	fd = open("/dev/ttyACM0",O_RDWR|O_NOCTTY);
+//	if(fd<0){
+//			LOGE("can't open /dev/ttyACM0");
+//			return -1;
+//	}
+//
+//	tcgetattr(fd,&option);
+//	cfmakeraw(&option);
+//
+//	cfsetispeed(&option,BAUDRATE); /*38400bps*/
+//	cfsetospeed(&option,BAUDRATE);
+//
+//	tcsetattr(fd,TCSANOW,&option);
+//	rbuf=hd;
+//	LOGD("ready for receiving data...\n");
+//	retv=read(fd,rbuf,len);
+//	if(retv==-1){
+//		LOGE("read error");
+//		return -1;
+//	}
+//	LOGD("The data received is:\n");
+//	LOGD("%s",rbuf);
+//
+//	close(fd);
+//	return 1;
+//
+//}
 
 
-char* joint_buf(signed short frame_no, char order, signed short length, char* data_buf )
-{
-	char code_value_buf[CODE_VALUE_BUF_SIZE], code_entry_buf[CODE_ENTRY_BUF_SIZE], *buf;
-	int i ;
-	char head, tail;
-	head = DATA_HEAD ;
-	tail = DATA_TAIL ; 
-	switch(order){
-	
-	case 0x01 :{
-		for(i=0; i<3; i++){
-			buf = code_value_buf ;
-			memcpy(buf, &head, sizeof(head));
-			buf+=sizeof(head);
-		}
-		memcpy(buf, &frame_no, sizeof(frame_no));
-		buf+=sizeof(frame_no);
-		memcpy(buf, &order, sizeof(order));
-		buf+=sizeof(order);
-		memcpy(buf, &length, sizeof(length));
-		buf+=sizeof(length);
-		memcpy(buf, data_buf, length);
-		buf+=length;
-		for(i=0; i<3; i++){
-			buf = code_value_buf ;
-			memcpy(buf, &tail, sizeof(tail));
-			buf+=sizeof(tail);
-		}
-		LOGD("buf is %s",buf);
-		return buf ;
-		
-	}
-	
-	// case 0x02 :
-	
-	// case 0x03 :
-	
-	// case 0xee :
-	
-	default : break;
-	
-	
-	}
-	
-	return buf ;
-	 
-}
+
+
+
 
 int check_config_file(char* path)
 {
@@ -477,30 +427,30 @@ int native_match_value(JNIEnv* env, jobject obj, jint code)
 	return code;
 }
 
-int native_send_data(JNIEnv* env, jobject obj, jstring buf)
-{
-	LOGD("native_send_data");
-	jboolean isCopy;
-	char* data = (*env)->GetStringUTFChars(env, buf, &isCopy);
-	LOGE("%s",data);
-	int len = (*env)->GetStringUTFLength(env, buf);
-	LOGE("%d",len);
-	int ret = serial_send_data(data, len);
-	(*env)->ReleaseStringUTFChars(env, buf, data);
-	return ret ;
-}
+//int native_send_data(JNIEnv* env, jobject obj, jstring buf)
+//{
+//	LOGD("native_send_data");
+//	jboolean isCopy;
+//	char* data = (*env)->GetStringUTFChars(env, buf, &isCopy);
+//	LOGE("%s",data);
+//	int len = (*env)->GetStringUTFLength(env, buf);
+//	LOGE("%d",len);
+//	int ret = serial_send_data(data, len);
+//	(*env)->ReleaseStringUTFChars(env, buf, data);
+//	return ret ;
+//}
 
-int native_rece_data(JNIEnv* env, jobject obj, jint len)
-{
-	LOGD("native_rece_data");
-	int ret = serial_rece_data(len);
-	if(ret<0){
-		LOGE("read data error");
-		return -1;
-	}
-	return ret;
-	
-}
+//int native_rece_data(JNIEnv* env, jobject obj, jint len)
+//{
+//	LOGD("native_rece_data");
+//	int ret = serial_rece_data(len);
+//	if(ret<0){
+//		LOGE("read data error");
+//		return -1;
+//	}
+//	return ret;
+//
+//}
 
 
 int native_check_config(JNIEnv* env, jobject obj, jstring path)
@@ -522,6 +472,31 @@ int native_usb_monitor(JNIEnv* env, jobject obj)
 	return ret;
 	
 }
+
+int native_update_table(JNIEnv* env, jobject obj, jstring path)
+{
+        LOGD("native update table");
+
+        jboolean isCopy;
+        char* config_path = (*env)->GetStringUTFChars(env, path, &isCopy);
+        int ret = update_code_table(config_path);
+        (*env)->ReleaseStringUTFChars(env, path, config_path);
+        return ret;
+}
+
+int native_send_code(JNIEnv* env, jobject obj, jchar code)
+{
+        LOGD("native send code");
+        int ret = send_code_value(code);
+        return ret ;
+}
+
+int native_send_config(JNIEnv* env, jobject obj)
+{
+      LOGD("native send configuration information");
+      int ret =  send_config_info();
+      return ret ;
+}
 ////////////////////////////////////////////JNI COMMON START//////////////////////////////////////////////////
 
 //static JavaVM* sVm;
@@ -535,7 +510,7 @@ int native_usb_monitor(JNIEnv* env, jobject obj)
  * void* fnPtr;		} JNINativeMethod;
  *
  *
- *¨¶    	Java         	C
+ *ÔøΩÔøΩ    	Java         	C
  ****************************************
  *V     	void         	void
  *Z      	jboolean     	boolean
@@ -565,10 +540,13 @@ static JNINativeMethod methods[] =
 				{"init_code_table", "(Ljava/lang/String;)I", (void*)native_init },
 				{"match_stb_value", "(I)I", (void*)native_match_value},
 				// {"match_serial_device", "(I)I", (void*)native_match_device},
-				{"serial_send_data", "(Ljava/lang/String;)I", (void*)native_send_data},
-				{"serial_rece_data", "(I)I", (void*)native_rece_data},
+//				{"serial_send_data", "(Ljava/lang/String;)I", (void*)native_send_data},
+//				{"serial_rece_data", "(I)I", (void*)native_rece_data},
 				{"check_config_file", "(Ljava/lang/String;)I", (void*)native_check_config},
-				{"usb_monitor", "()I", (void*)native_usb_monitor}
+				{"usb_monitor", "()I", (void*)native_usb_monitor},
+				{"update_config_table", "(Ljava/lang/String;)I", (void*)native_update_table},
+				{"send_code_value", "(C)I", (void*)native_send_code},
+				{"send_config_info", "()I", (void*)native_send_config},
 		};
 
 //className for register
