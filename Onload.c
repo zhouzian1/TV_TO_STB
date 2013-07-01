@@ -88,54 +88,7 @@ int get_device_keycode()
 			Opendev=0;
 		}
 		
-		
-		
-		
-		// fd_set descriptors;
-		// struct timeval time_to_wait;
-		// time_to_wait.tv_sec = 1000;
-		// time_to_wait.tv_usec = 1000;
-		// FD_ZERO ( &descriptors );
-		// FD_SET ( fd_key, &descriptors );
-		
-		
-		// retv=select( fd_key + 1, &descriptors, NULL, NULL, &time_to_wait);
-		// retv=select( fd_key + 1, &descriptors, NULL, NULL, 0 );
-	
-			// if ( retv < 0 ) {
-				// /* Error */
-				// LOGE("select error \n");
-				// return -1;
-			// }
-
-			// else if ( ! retv ) {
-				// /* Timeout */
-				// LOGE("Time Out \n");
-				// return 0;
-			// }
-
-			// else if ( FD_ISSET ( fd_key, &descriptors ) ) {
-			
-			
-			
-//			struct pollfd fds[1] ;
-//
-//				fds[0].fd = fd_key ;
-//				fds[0].events = POLLIN ;
-//
-//				return_value = poll(fds, 1, -1);
-//				if(return_value == -1){
-//					LOGE("poll err");
-//					return -1 ;
-//				}
-//				else if(!return_value){
-//					LOGE ("seconds elapsed.");
-//					return -1 ;
-//				}
-//				else if(fds[0].revents & POLLIN){
-
-
-			LOGD("****************have read code************************\n");
+		LOGD("****************have read code************************\n");
 
 			int count = read(fd_key, &event, sizeof(struct input_event));
 			if(EV_KEY == event.type && 1 == event.value){
@@ -164,21 +117,20 @@ int init_code_table(char* path)
 	char delims[] = "#";
     char *result = NULL;
 	
-	char buf[MAX_LINE]; /* ������ */
+	char buf[MAX_LINE]; 
 	FILE *fp;
 	int len;
 	
 	LOGI("config file path %s",path);
-	if((fp = fopen(path, "r")) == NULL){ /* ���ļ� */
+	if((fp = fopen(path, "r")) == NULL){ 
 		LOGE("fail to load config file");
 		return -1;
 	}
 
 
-	while(fgets(buf, MAX_LINE, fp) != NULL){ /* ÿ�ζ���һ�� */
+	while(fgets(buf, MAX_LINE, fp) != NULL){ 
 		len = strlen(buf);
-		/* �����������ַ��������ַ������� */
-		buf[len - 1] = '\0'; /* ȥ�����з�����������ַ���Ϳ��Դ����� */
+		buf[len - 1] = '\0'; 
 		
 		tmp = (struct code_data_node*)malloc(sizeof(struct code_data_node));
 		memset(tmp,0,sizeof(struct code_data_node));
@@ -205,12 +157,12 @@ int init_code_table(char* path)
 	
 	
 	LOGI("list for each.........\n");
-	list_for_each(pos, &(code_list.list)) //����ڵ�
+	list_for_each(pos, &(code_list.list))
 	{
 
-		tmp=list_entry(pos, struct code_data_node, list);//ȡ����ǰlist�ڵ��ָ��code_data_node�ĵ�ַ
+		tmp=list_entry(pos, struct code_data_node, list);
 
-		LOGI("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);//��ӡ��kool_list�Ľṹ���Ա����
+		LOGI("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);
 
 	}
 
@@ -223,13 +175,13 @@ int match_stb_value(int code)
 {
 	struct code_data_node *tmp ;
 	struct list_head *pos;
-	list_for_each(pos, &(code_list.list)) //����ڵ�
+	list_for_each(pos, &(code_list.list))
 		{
 
-			tmp=list_entry(pos, struct code_data_node, list);//ȡ����ǰlist�ڵ��ָ��code_data_node�ĵ�ַ
+			tmp=list_entry(pos, struct code_data_node, list);
 
 			if(code==tmp->tv_code_value){
-				LOGD("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);//��ӡ��kool_list�Ľṹ���Ա����
+				LOGD("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);
 				return tmp->stb_code_value ; 
 			}
 		}
@@ -394,7 +346,7 @@ int monitor_netlink_uevent()
 		return -1;
 			
     }
-/////////////////////////////////////////////////native methods////////////////////////////////////////////////
+///////////////////////native methods////////////////////////////////////////////////
 void native_jnitest(JNIEnv* env, jobject obj)
 {
 	LOGD("native_jnitest");
@@ -497,7 +449,7 @@ int native_send_config(JNIEnv* env, jobject obj)
       int ret =  send_config_info();
       return ret ;
 }
-////////////////////////////////////////////JNI COMMON START//////////////////////////////////////////////////
+////////////////////////////JNI COMMON START////////////////////////////////////
 
 //static JavaVM* sVm;
 
