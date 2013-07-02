@@ -5,21 +5,22 @@
 #include <jni.h>
 #include <string.h>
 //#include<cutils/log.h>
-#include<sys/stat.h>
-#include<fcntl.h>
-#include<errno.h>
-#include<linux/input.h>
-#include<malloc.h>
-#include<sys/types.h>
-#include<unistd.h>
-#include<termios.h>
-#include<math.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <linux/input.h>
+#include <malloc.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <termios.h>
+#include <math.h>
 #include <asm/types.h>
+#include <sys/poll.h>
 #include <sys/socket.h>  
 #include <linux/netlink.h>
 
-#include"list.h"
-#include"copy.h"
+#include "list.h"
+#include "copy.h"
 
 
 #define MAX_LINE 1024
@@ -43,6 +44,7 @@ static JavaVM* sVm;
 static int fd_key = -1;
 struct input_event event;
 struct code_data_node code_list ;
+struct pollfd fds[1] ;
 
 
 void jni_test();
@@ -73,6 +75,9 @@ void open_device_keycode()
 		LOGE("open device failed \n");
 	else
 		LOGD("open device sccuess \n");
+
+        fds[0].fd = fd_key ;
+        fds[0].events = POLLIN ;
 		
 }
 
@@ -81,14 +86,27 @@ void open_device_keycode()
 //get key_code value form IR device
 int get_device_keycode()
 {
-		int retv;
-		//printf("get device keycode \n");
-		if(Opendev==1){
-			open_device_keycode();
-			Opendev=0;
-		}
-		
-		LOGD("****************have read code************************\n");
+        int retv;
+        LOGD("get device key-code");
+        if(Opendev==1){
+              open_device_keycode();
+              Opendev=0;
+        }
+
+
+        while(1){
+                retv = poll(fds, 1, -1);
+                if(retv == -1){
+                      LOGE("poll err");
+                      return -1 ;
+                }else if(!retv){
+                        LOGE ("seconds elapsed.");
+                        return -1 ;
+                }
+                else if(fds[0].revents & POLLIN){
+
+
+			LOGD("****************have read code************************\n");
 
 			int count = read(fd_key, &event, sizeof(struct input_event));
 			if(EV_KEY == event.type && 1 == event.value){
@@ -97,7 +115,11 @@ int get_device_keycode()
 			//__android_log_print(ANDROID_LOG_INFO, "Codemapping", "getcode code: %d, value: %d",event.code,event.value);
 			close(fd_key);
 			return event.code;
-		}
+			}
+
+
+                }
+        }
 
 		close(fd_key);	
 		return -1;
@@ -117,20 +139,21 @@ int init_code_table(char* path)
 	char delims[] = "#";
     char *result = NULL;
 	
-	char buf[MAX_LINE]; 
+	char buf[MAX_LINE]; /* ������ */
 	FILE *fp;
 	int len;
 	
 	LOGI("config file path %s",path);
-	if((fp = fopen(path, "r")) == NULL){ 
+	if((fp = fopen(path, "r")) == NULL){ /* ���ļ� */
 		LOGE("fail to load config file");
 		return -1;
 	}
 
 
-	while(fgets(buf, MAX_LINE, fp) != NULL){ 
+	while(fgets(buf, MAX_LINE, fp) != NULL){ /* ÿ�ζ���һ�� */
 		len = strlen(buf);
-		buf[len - 1] = '\0'; 
+		/* �����������ַ��������ַ������� */
+		buf[len - 1] = '\0'; /* ȥ�����з�����������ַ���Ϳ��Դ����� */
 		
 		tmp = (struct code_data_node*)malloc(sizeof(struct code_data_node));
 		memset(tmp,0,sizeof(struct code_data_node));
@@ -157,12 +180,12 @@ int init_code_table(char* path)
 	
 	
 	LOGI("list for each.........\n");
-	list_for_each(pos, &(code_list.list))
+	list_for_each(pos, &(code_list.list)) //����ڵ�
 	{
 
-		tmp=list_entry(pos, struct code_data_node, list);
+		tmp=list_entry(pos, struct code_data_node, list);//ȡ����ǰlist�ڵ��ָ��code_data_node�ĵ�ַ
 
-		LOGI("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);
+		LOGI("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);//��ӡ��kool_list�Ľṹ���Ա����
 
 	}
 
@@ -175,13 +198,13 @@ int match_stb_value(int code)
 {
 	struct code_data_node *tmp ;
 	struct list_head *pos;
-	list_for_each(pos, &(code_list.list))
+	list_for_each(pos, &(code_list.list)) //����ڵ�
 		{
 
-			tmp=list_entry(pos, struct code_data_node, list);
+			tmp=list_entry(pos, struct code_data_node, list);//ȡ����ǰlist�ڵ��ָ��code_data_node�ĵ�ַ
 
 			if(code==tmp->tv_code_value){
-				LOGD("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);
+				LOGD("tv_code_value = %d, stb_code_value= %d\n", tmp->tv_code_value, tmp->stb_code_value);//��ӡ��kool_list�Ľṹ���Ա����
 				return tmp->stb_code_value ; 
 			}
 		}
@@ -346,7 +369,7 @@ int monitor_netlink_uevent()
 		return -1;
 			
     }
-///////////////////////native methods////////////////////////////////////////////////
+/////////////////////////////////////////////////native methods////////////////////////////////////////////////
 void native_jnitest(JNIEnv* env, jobject obj)
 {
 	LOGD("native_jnitest");
@@ -449,7 +472,7 @@ int native_send_config(JNIEnv* env, jobject obj)
       int ret =  send_config_info();
       return ret ;
 }
-////////////////////////////JNI COMMON START////////////////////////////////////
+////////////////////////////////////////////JNI COMMON START//////////////////////////////////////////////////
 
 //static JavaVM* sVm;
 
@@ -496,7 +519,7 @@ static JNINativeMethod methods[] =
 //				{"serial_rece_data", "(I)I", (void*)native_rece_data},
 				{"check_config_file", "(Ljava/lang/String;)I", (void*)native_check_config},
 				{"usb_monitor", "()I", (void*)native_usb_monitor},
-				{"update_config_table", "(Ljava/lang/String;)I", (void*)native_update_table},
+				{"update_code_table;", "(Ljava/lang/String;)I", (void*)native_update_table},
 				{"send_code_value", "(C)I", (void*)native_send_code},
 				{"send_config_info", "()I", (void*)native_send_config},
 		};

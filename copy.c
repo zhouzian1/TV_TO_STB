@@ -8,7 +8,6 @@
 #include<unistd.h>
 #include<termios.h>
 #include<math.h>
-#include <android/log.h>
 #include"copy.h"
 
 char config_info[5]={0};
@@ -293,16 +292,21 @@ int serial_send_data(char* buf, int length)
 	}
 	
 	LOGD("serial_send_data\n");
-	// for(i=0;i<length;i++)
-		// {
-			// LOGD("%x \t",buf[i]);
-		// }
-	// LOGD("\n");
+	for(i=0;i<length;i++)
+		{
+			LOGD("%x \t",buf[i]);
+		}
+	LOGD("\n");
+	// char buf[]={"SSello, serial port send test\n"};
+	//char buf[]={0xA5,0xA5,0xA5,0x00,0x00,0x01,0x00,0x05,0x01,0x02,0x03,0x04,0x05,0x13,0xB6,0xB6,0xB6};
 	struct termios option;
+	//int length = sizeof(buf);
 	LOGD("ready for sending data.....\n");
 	LOGD("buf length = %d \n",length);
 	
 	tcgetattr(fd,&option);
+	// option.c_cflag &= ~PARENB;
+	// option.c_cflag &= ~CRTSCTS;
 	cfmakeraw(&option);
 	
 	cfsetispeed(&option,B38400);
@@ -408,11 +412,11 @@ int send_code(char *data, char order, short data_size, int buf_size)
 	// value=code;
 	LOGD("data_size =%x  buf_size= %x ",data_size, buf_size);
 	buf = joint_buf(frame_num, order, data_size, data, buf_size);
-	// for(i=0;i<buf_size;i++)
-		// {
-			// LOGD("%x \t",*(buf+i));
-		// }
-	// LOGD("\n");
+	for(i=0;i<buf_size;i++)
+		{
+			LOGD("%x \t",*(buf+i));
+		}
+	LOGD("\n");
 	while(1){
 		int ret = serial_send_data(buf, buf_size);
 		if(ret<0){
@@ -426,6 +430,18 @@ int send_code(char *data, char order, short data_size, int buf_size)
 			LOGD("select read \n");
 			continue ;
 		}
+		// if(rece_buf==NULL){
+			// LOGD("wait 500ms \n");
+		
+			// usleep(1000);
+			// rece_buf=serial_rece_data(ACK_SIZE);
+		
+			// if(rece_buf==NULL){
+				// LOGD("rece error \n");
+				// continue ;
+				// }
+				
+		// }
 		LOGD("zzzzz rece buf = %p \n",rece_buf);
 		ret = analyze_buf(rece_buf, ACK_SIZE);
 		if(ret==-1){
@@ -449,17 +465,18 @@ int send_code(char *data, char order, short data_size, int buf_size)
 char* convert_string(char *buf,int* len)
  {
 	int code = 0;
+	// char str[] = "now # is the time for all # good men to come to the # aid of their country";
 	int i=0;
 	char delims[] = "#";
 	char *split_buf[3] ;
 	char *result = NULL;
 	result = strtok( buf, delims );
 	while( result != NULL ) {
-       // LOGD( "result is \"%s\"\n", result );
+       LOGD( "result is \"%s\"\n", result );
 	   split_buf[i++]=result;
 	   
 	   code=atoi(result);
-	   // LOGD( "code is %d \n",code);
+	   LOGD( "code is %d \n",code);
        result = strtok( NULL, delims );
    } 
    
